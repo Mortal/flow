@@ -75,8 +75,6 @@ class map {
     grid<elev_type> heights;
     height_rng rng;
 
-    double m_wiggle;
-
     struct noinit_tag {};
     static const noinit_tag noinit;
 
