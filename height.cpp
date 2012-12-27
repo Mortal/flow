@@ -226,6 +226,7 @@ int main(int argc, char ** argv) {
 
     size_t size = 32;
     if (vm.count("size")) size = vm["size"].as<size_t>();
+    size = std::min(std::numeric_limits<size_t>::max()/2, size);
     bool ascii = true;
     bool pgm = false;
     if (vm.count("pgm")) ascii = false, pgm = true;
@@ -246,7 +247,13 @@ int main(int argc, char ** argv) {
         wiggle *= 2;
     }
 
-    for (size_t i = 0; i < exp; ++i, wiggle /= 2) m = m.elaborate(wiggle);
+    for (size_t i = 0; i < exp; ++i, wiggle /= 2) {
+        try {
+            m = m.elaborate(wiggle);
+        } catch (std::bad_alloc) {
+            std::cerr << "Out of memory; aborting expansion" << std::endl;
+        }
+    }
     const grid<elev_type> & g = m.get_heights();
     if (pgm)
         to_pgm(g, size, std::cout);
