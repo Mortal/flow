@@ -47,8 +47,6 @@ public:
     {
     }
 
-    elev_type default_wiggle() const { return (elev_max - elev_min) / 2; }
-
     elev_type operator()() {
         return in_range(elev_min, elev_max);
     }
@@ -98,6 +96,7 @@ public:
 
     const grid<elev_type> & get_heights() const { return heights; }
 
+private:
     elev_type avg(elev_type a, elev_type b) {
         return a + (b-a)/2;
     }
@@ -110,6 +109,7 @@ public:
         return rng(avg(avg(a, b), avg(c, d)), wiggle);
     }
 
+public:
     map elaborate(const double wiggle) {
         const double w = wiggle;
 
