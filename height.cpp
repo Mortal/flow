@@ -194,6 +194,26 @@ void to_ascii(const grid<elev_type> & g, size_t sz, std::ostream & os) {
     }
 }
 
+grid<elev_type> lightmap(const grid<elev_type> & g, double lval) {
+    grid<elev_type> res(g.cols(), g.rows());
+    const double PI = acos(0);
+    const double sun_angle = -PI/4;
+    const double cos_sun = cos(sun_angle);
+    const double sin_sun = sin(sun_angle);
+    for (size_t r = 1; r < g.rows()-1; ++r) {
+        for (size_t c = 1; c < g.cols()-1; ++c) {
+            elev_type range = elev_max - elev_min;
+            elev_type v = g.get(c+1, r) - g.get(c-1, r);
+            elev_type u = g.get(c, r-1) - g.get(c, r+1);
+            double light = (-v*cos_sun - u*sin_sun) / range * lval;
+            double tanlight = atan(light);
+            elev_type z = static_cast<elev_type>((PI/2 + tanlight)/PI * (elev_max-elev_min) + elev_min);
+            res.get(c, r) = z;
+        }
+    }
+    return res;
+}
+
 int main(int argc, char ** argv) {
     namespace po = boost::program_options;
 
@@ -205,6 +225,7 @@ int main(int argc, char ** argv) {
         ("size", po::value<size_t>(), "terrain size (default 32)")
         ("roughness", po::value<double>(), "terrain roughness (default 1.0)")
         ("seed", po::value<size_t>(), "random seed")
+        ("light", po::value<double>(), "produce a light map")
     ;
     po::variables_map vm;
     try {
@@ -234,6 +255,9 @@ int main(int argc, char ** argv) {
     if (vm.count("roughness")) roughness = vm["roughness"].as<double>();
     size_t seed = static_cast<size_t>(boost::chrono::high_resolution_clock::now().time_since_epoch().count());
     if (vm.count("seed")) seed = vm["seed"].as<size_t>();
+    bool light = false;
+    double lval = 0;
+    if (vm.count("light")) light = true, lval = vm["light"].as<double>();
 
     std::cerr << "Seed: " << seed << std::endl;
     map m(2, 2, seed);
@@ -255,9 +279,17 @@ int main(int argc, char ** argv) {
         }
     }
     const grid<elev_type> & g = m.get_heights();
-    if (pgm)
-        to_pgm(g, size, std::cout);
-    if (ascii)
-        to_ascii(g, size, std::cout);
+    if (light) {
+        grid<elev_type> l = lightmap(g, lval);
+        if (pgm)
+            to_pgm(l, size, std::cout);
+        if (ascii)
+            to_ascii(l, size, std::cout);
+    } else {
+        if (pgm)
+            to_pgm(g, size, std::cout);
+        if (ascii)
+            to_ascii(g, size, std::cout);
+    }
     return 0;
 }

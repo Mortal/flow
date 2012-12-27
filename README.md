@@ -26,3 +26,16 @@ map to graded colors.
 ```sh
 convert map.pgm \( xc:black xc:black xc:blue xc:cyan +append \) -clut heatmap.png
 ```
+
+Light maps
+----------
+
+```sh
+$ ./height --roughness 5.0 --size 500 --light 5.0 --pgm > light.pgm
+Seed: 44336164721644
+$ ./height --roughness 5.0 --size 500 --seed 44336164721644 --pgm > map.pgm
+Seed: 44336164721644
+$ convert light.pgm light.png
+$ convert map.pgm \( xc:red xc:yellow xc:blue +append \) -clut map.png
+$ convert light.png map.png -compose multiply -composite composite.png
+```
