@@ -168,9 +168,14 @@ public:
     }
 };
 
-void to_pgm(const grid<elev_type> & g, size_t sz, std::ostream & os) {
-    size_t rows = std::min(g.rows(), sz);
-    size_t cols = std::min(g.cols(), sz);
+struct dims {
+    size_t width;
+    size_t length;
+};
+
+void to_pgm(const grid<elev_type> & g, dims sz, std::ostream & os) {
+    size_t rows = std::min(g.rows(), sz.length);
+    size_t cols = std::min(g.cols(), sz.width);
     os << "P5\n" << cols << ' ' << rows << " 255\n";
     for (size_t r = 0; r < rows; ++r) {
         for (size_t c = 0; c < cols; ++c) {
@@ -180,12 +185,12 @@ void to_pgm(const grid<elev_type> & g, size_t sz, std::ostream & os) {
     }
 }
 
-void to_ascii(const grid<elev_type> & g, size_t sz, std::ostream & os) {
+void to_ascii(const grid<elev_type> & g, dims sz, std::ostream & os) {
     // http://paulbourke.net/dataformats/asciiart/
     //std::string greys = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
-    std::string greys = " `'.,-=+rconue$$%%##@@";
-    for (size_t r = 0; r < std::min(sz, g.rows()); ++r) {
-        for (size_t c = 0; c < std::min(sz, g.cols()); ++c) {
+    std::string greys = " `'.,-+=rcoea$$%%##@@";
+    for (size_t r = 0; r < std::min(sz.length, g.rows()); ++r) {
+        for (size_t c = 0; c < std::min(sz.width, g.cols()); ++c) {
             elev_type scaled = (g.get(c, r) - elev_min) / (elev_max - elev_min) * greys.size();
             scaled = std::max(elev_type(0), scaled);
             os << greys[std::min(greys.size()-1, static_cast<size_t>(scaled))];
@@ -214,6 +219,25 @@ grid<elev_type> lightmap(const grid<elev_type> & g, double lval) {
     return res;
 }
 
+dims parse_dims(std::string input) {
+    const char * errmsg = "Invalid size; must be <W>x<L> or a simple integer";
+    auto x = std::find(input.begin(), input.end(), 'x');
+    if (x == input.end()) {
+        char * p = 0;
+        size_t i = strtol(input.c_str(), &p, 10);
+        if (*p != '\0') throw std::invalid_argument(errmsg);
+        return {.width = i, .length = i};
+    }
+    *x = '\0';
+    ++x;
+    char * p = 0;
+    size_t w = strtol(&input[0], &p, 10);
+    if (*p != '\0') throw std::invalid_argument(errmsg);
+    size_t l = strtol(&*x, &p, 10);
+    if (*p != '\0') throw std::invalid_argument(errmsg);
+    return {.width = w, .length = l};
+}
+
 int main(int argc, char ** argv) {
     namespace po = boost::program_options;
 
@@ -222,7 +246,7 @@ int main(int argc, char ** argv) {
         ("help", "produce help message")
         ("ascii", "output ascii (default)")
         ("pgm", "output pgm")
-        ("size", po::value<size_t>(), "terrain size (default 32)")
+        ("size", po::value<std::string>(), "terrain size (default 32)")
         ("roughness", po::value<double>(), "terrain roughness (default 1.0)")
         ("seed", po::value<size_t>(), "random seed")
         ("light", po::value<double>(), "produce a light map")
@@ -245,9 +269,10 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
-    size_t size = 32;
-    if (vm.count("size")) size = vm["size"].as<size_t>();
-    size = std::min(std::numeric_limits<size_t>::max()/2, size);
+    dims d{.width = 32, .length = 32};
+    if (vm.count("size")) d = parse_dims(vm["size"].as<std::string>());
+    d.width = std::min(std::numeric_limits<size_t>::max()/2, d.width);
+    d.length = std::min(std::numeric_limits<size_t>::max()/2, d.length);
     bool ascii = true;
     bool pgm = false;
     if (vm.count("pgm")) ascii = false, pgm = true;
@@ -265,6 +290,7 @@ int main(int argc, char ** argv) {
     size_t exp = 0;
     size_t sz = 2;
     double wiggle = roughness;
+    size_t size = std::max(d.width, d.length);
     while (sz < size) {
         exp++;
         sz = 2*sz - 1;
@@ -282,14 +308,14 @@ int main(int argc, char ** argv) {
     if (light) {
         grid<elev_type> l = lightmap(g, lval);
         if (pgm)
-            to_pgm(l, size, std::cout);
+            to_pgm(l, d, std::cout);
         if (ascii)
-            to_ascii(l, size, std::cout);
+            to_ascii(l, d, std::cout);
     } else {
         if (pgm)
-            to_pgm(g, size, std::cout);
+            to_pgm(g, d, std::cout);
         if (ascii)
-            to_ascii(g, size, std::cout);
+            to_ascii(g, d, std::cout);
     }
     return 0;
 }
