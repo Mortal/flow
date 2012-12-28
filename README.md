@@ -39,3 +39,13 @@ $ convert light.pgm light.png
 $ convert map.pgm \( xc:red xc:yellow xc:blue +append \) -clut map.png
 $ convert light.png map.png -compose multiply -composite composite.png
 ```
+
+```sh
+$ ./height --size 1920x1080 --seed 1290978805858707 --roughness 3 --pgm > bg.pgm
+$ ./height --size 1920x1080 --seed 1290978805858707 --roughness 3 --pgm --light 5.0 > bglight.pgm
+$ convert \( bg.pgm \( xc:white xc:green xc:green xc:PaleGreen3 xc:DodgerBlue \
+                       xc:DodgerBlue xc:DodgerBlue xc:DodgerBlue +append \) \
+             -clut \) \
+          \( bg.pgm bglight.pgm -compose screen -composite \) \
+          -compose multiply -composite composite.png
+```
