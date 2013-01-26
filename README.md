@@ -49,3 +49,9 @@ $ convert \( bg.pgm \( xc:white xc:green xc:green xc:PaleGreen3 xc:DodgerBlue \
           \( bg.pgm bglight.pgm -compose screen -composite \) \
           -compose multiply -composite composite.png
 ```
+
+License
+-------
+
+If you would like to use this project in a free and open source software stack,
+let me know via a message on GitHub and I will slam on the license you need.
