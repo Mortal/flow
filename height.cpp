@@ -173,14 +173,69 @@ struct dims {
     size_t length;
 };
 
+template <typename Rounded>
+class floyd_steinberg {
+    std::vector<elev_type> m_cur;
+    std::vector<elev_type> m_next;
+
+    size_t m_idx;
+    size_t m_range;
+
+public:
+    floyd_steinberg(size_t width, size_t range)
+        : m_cur(width)
+        , m_next(width)
+        , m_idx(0)
+        , m_range(range)
+    {
+    }
+
+    Rounded round_next(elev_type e) {
+        Rounded r = closest(e + m_cur[m_idx]);
+
+        elev_type error = e - inverse(r);
+
+        if (m_idx+1 < m_cur.size()) {
+            m_cur[m_idx+1] += error * 7/16;
+            m_next[m_idx+1] += error * 1/16;
+        }
+
+        if (m_idx > 0)
+            m_next[m_idx-1] += error * 3/16;
+
+        m_next[m_idx] += error * 5/16;
+
+        m_idx = (m_idx + 1) % m_cur.size();
+        if (m_idx == 0) {
+            std::swap(m_cur, m_next);
+            std::fill(m_next.begin(), m_next.end(), 0.0);
+        }
+
+        return r;
+    }
+
+private:
+    Rounded closest(elev_type e) {
+        elev_type scaled
+            = (e - elev_min) / (elev_max - elev_min) * m_range;
+        scaled = std::max(elev_type(0), scaled);
+        return static_cast<Rounded>(std::min(m_range-1,
+                                             static_cast<size_t>(scaled)));
+    }
+
+    elev_type inverse(Rounded r) {
+        return elev_min + (elev_max - elev_min) * static_cast<size_t>(r) / m_range;
+    }
+};
+
 void to_pgm(const grid<elev_type> & g, dims sz, std::ostream & os) {
     size_t rows = std::min(g.rows(), sz.length);
     size_t cols = std::min(g.cols(), sz.width);
+    floyd_steinberg<unsigned char> fs(cols, 256);
     os << "P5\n" << cols << ' ' << rows << " 255\n";
     for (size_t r = 0; r < rows; ++r) {
         for (size_t c = 0; c < cols; ++c) {
-            elev_type scaled = (g.get(c, r) - elev_min) / (elev_max - elev_min) * 256;
-            os << static_cast<char>(scaled);
+            os << fs.round_next(g.get(c, r));
         }
     }
 }
@@ -189,11 +244,12 @@ void to_ascii(const grid<elev_type> & g, dims sz, std::ostream & os) {
     // http://paulbourke.net/dataformats/asciiart/
     //std::string greys = "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,\"^`'. ";
     std::string greys = " `'.,-+=rcoea$$%%##@@";
-    for (size_t r = 0; r < std::min(sz.length, g.rows()); ++r) {
-        for (size_t c = 0; c < std::min(sz.width, g.cols()); ++c) {
-            elev_type scaled = (g.get(c, r) - elev_min) / (elev_max - elev_min) * greys.size();
-            scaled = std::max(elev_type(0), scaled);
-            os << greys[std::min(greys.size()-1, static_cast<size_t>(scaled))];
+    size_t rows = std::min(g.rows(), sz.length);
+    size_t cols = std::min(g.cols(), sz.width);
+    floyd_steinberg<size_t> fs(cols, greys.size());
+    for (size_t r = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c) {
+            os << greys[fs.round_next(g.get(c, r))];
         }
         os << '\n';
     }
