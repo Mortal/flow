@@ -317,6 +317,9 @@ int main(int argc, char ** argv) {
     } catch (const boost::program_options::invalid_option_value & e) {
         std::cout << e.what() << '\n' << desc << '\n';
         return 1;
+    } catch (const boost::program_options::invalid_command_line_syntax & e) {
+        std::cout << e.what() << '\n' << desc << '\n';
+        return 1;
     }
     po::notify(vm);
 
